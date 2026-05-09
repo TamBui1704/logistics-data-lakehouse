@@ -1,0 +1,37 @@
+name: logistics_dbt
+version: '1.0.0'
+config-version: 2
+
+profile: logistics_duckdb
+
+vars:
+  data_date: '1900-01-01' # Giá trị mặc định để dbt có thể compile
+
+
+model-paths: ["models"]
+analysis-paths: ["analyses"]
+test-paths: ["tests"]
+seed-paths: ["seeds"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+on-run-start:
+  - "LOAD httpfs;"
+  - "LOAD aws;"
+
+models:
+  logistics_dbt:
+    bronze:
+      +schema: bronze
+      +materialized: view
+    silver:
+      +schema: silver
+      +materialized: external
+    gold:
+      +schema: gold
+      +materialized: external

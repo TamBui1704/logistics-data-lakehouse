@@ -1,0 +1,110 @@
+version: '3.8'
+
+x-airflow-common: &airflow-common
+  build: .
+  image: logistics-etl-airflow:latest
+  env_file: .env
+  environment:
+    &airflow-common-env
+    AIRFLOW__CORE__EXECUTOR: LocalExecutor
+    AIRFLOW__DATABASE__SQL_ALCHEMY_CONN: postgresql+psycopg2://airflow:airflow@postgres/airflow
+    AIRFLOW__CORE__FERNET_KEY: ''
+    AIRFLOW__CORE__DAGS_ARE_PAUSED_AT_CREATION: 'true'
+    AIRFLOW__CORE__LOAD_EXAMPLES: 'false'
+    AIRFLOW__API__AUTH_BACKENDS: 'airflow.api.auth.backend.basic_auth'
+  volumes:
+    - ./airflow/dags:/opt/airflow/dags
+    - ./airflow/logs:/opt/airflow/logs
+    - ./airflow/plugins:/opt/airflow/plugins
+    - ./data_gen:/opt/airflow/data_gen
+    - ./dbt_project:/opt/airflow/dbt_project
+    - ./data:/opt/airflow/data
+  depends_on:
+    postgres:
+      condition: service_healthy
+    floci:
+      condition: service_started
+
+services:
+  # ── 1. AWS S3 Simulator ──────────────────────────────────────────────────────
+  floci:
+    image: floci/floci:latest
+    container_name: logistics_floci
+    ports:
+      - "4566:4566"
+    environment:
+      - SERVICES=s3
+      - FLOCI_STORAGE_MODE=wal
+    volumes:
+      - ./floci_data:/app/data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:4566/_floci/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── 2. Postgres (metadata store cho Airflow) ─────────────────────────────────
+  postgres:
+    image: postgres:15
+    container_name: logistics_postgres
+    environment:
+      POSTGRES_USER: airflow
+      POSTGRES_PASSWORD: airflow
+      POSTGRES_DB: airflow
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD", "pg_isready", "-U", "airflow"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ── 3. Airflow Init ──────────────────────────────────────────────────────────
+  airflow-init:
+    <<: *airflow-common
+    container_name: logistics_airflow_init
+    entrypoint: /bin/bash
+    command:
+      - -c
+      - |
+        airflow db migrate
+        airflow users create \
+          --username $${AIRFLOW_USER} \
+          --firstname Admin \
+          --lastname User \
+          --role Admin \
+          --email admin@logistics.io \
+          --password $${AIRFLOW_PASSWORD}
+    restart: on-failure
+
+  # ── 4. Airflow Webserver ─────────────────────────────────────────────────────
+  airflow-webserver:
+    <<: *airflow-common
+    container_name: logistics_airflow_webserver
+    command: webserver
+    ports:
+      - "8080:8080"
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    restart: always
+    healthcheck:
+      test: ["CMD", "curl", "--fail", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+
+  # ── 5. Airflow Scheduler ─────────────────────────────────────────────────────
+  airflow-scheduler:
+    <<: *airflow-common
+    container_name: logistics_airflow_scheduler
+    command: scheduler
+    depends_on:
+      airflow-init:
+        condition: service_completed_successfully
+    restart: always
+
+volumes:
+  postgres_db:

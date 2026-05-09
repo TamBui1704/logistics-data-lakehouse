@@ -1,0 +1,29 @@
+# DuckDB và data output (gitignore)
+data/
+*.duckdb
+
+# Airflow logs
+airflow/logs/
+
+# Terraform state
+infrastructure/.terraform/
+infrastructure/terraform.tfstate
+infrastructure/terraform.tfstate.backup
+*.tfplan
+
+# Floci data
+floci_data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+
+# dbt
+dbt_project/target/
+dbt_project/dbt_packages/
+
+# Environments
+.env
+

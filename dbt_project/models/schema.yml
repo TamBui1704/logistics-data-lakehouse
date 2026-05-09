@@ -1,0 +1,69 @@
+version: 2
+
+models:
+  - name: stg_carriers
+    description: "Bronze: Dữ liệu thô công ty vận chuyển đọc trực tiếp từ S3"
+    columns:
+      - name: carrier_id
+        description: "Mã công ty vận chuyển (PK)"
+        tests:
+          - unique
+          - not_null
+      - name: carrier_name
+        tests:
+          - not_null
+      - name: rating
+        tests:
+          - not_null
+
+  - name: stg_routes
+    description: "Bronze: Dữ liệu thô tuyến đường đọc trực tiếp từ S3"
+    columns:
+      - name: route_id
+        description: "Mã tuyến đường (PK)"
+        tests:
+          - unique
+          - not_null
+      - name: distance_km
+        tests:
+          - not_null
+
+  - name: stg_shipments
+    description: "Bronze: Dữ liệu thô đơn hàng vận chuyển đọc trực tiếp từ S3"
+    columns:
+      - name: shipment_id
+        description: "Mã đơn hàng (PK)"
+        tests:
+          - unique
+          - not_null
+      - name: carrier_id
+        tests:
+          - not_null
+          - relationships:
+              to: ref('stg_carriers')
+              field: carrier_id
+      - name: status
+        tests:
+          - accepted_values:
+              values: ['Đang vận chuyển', 'Đã giao', 'Hoàn hàng', 'Chờ lấy hàng', 'Thất lạc']
+
+  - name: int_shipment_details
+    description: "Silver: Đơn hàng đã được enrich với thông tin carrier và tuyến đường"
+    columns:
+      - name: shipment_id
+        tests:
+          - unique
+          - not_null
+
+  - name: fct_logistics_kpis
+    description: "Gold: KPI tổng hợp theo ngày và carrier phục vụ báo cáo"
+    columns:
+      - name: data_date
+        tests:
+          - not_null
+      - name: carrier_id
+        tests:
+          - not_null
+      - name: delivery_rate_pct
+        tests:
+          - not_null
