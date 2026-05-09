@@ -1,6 +1,6 @@
 # Logistics ETL Pipeline
 
-> End-to-end ETL project sử dụng công nghệ cloud giả lập – phù hợp cho portfolio Data Engineer.
+> Một hệ thống **Modern Data Lakehouse** toàn diện cho ngành vận tải (Logistics), được xây dựng để giải quyết bài toán theo dõi hiệu suất vận hành (SLA) và tối ưu hóa chi phí vận chuyển. Dự án ứng dụng mô hình **Medallion Architecture** chuẩn công nghiệp, kết hợp khả năng tự động hóa hạ tầng (**Terraform**), điều phối luồng dữ liệu (**Airflow**) và biến đổi dữ liệu hiện đại (**dbt + DuckDB**) trên môi trường Cloud giả lập.
 
 ## Kiến trúc
 
